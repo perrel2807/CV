@@ -147,17 +147,18 @@
     }
 
     .cv {
-      max-width: 800px;
       margin: 0 auto;
       background: white;
       padding: 20px 30px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      max-width: 794px;
+      min-height: 1123px;
+      max-height: 1123px;
     }
 
     .header {
-      border-bottom: 2px solid #2c2c2c;
-      padding-bottom: 10px;
-      margin-bottom: 15px;
+      padding-bottom: 5px;
+      margin-bottom: 2px;
     }
 
     .header h1 {
@@ -168,7 +169,7 @@
     }
 
     .section {
-      margin-bottom: 16px;
+      margin-bottom: 12px;
     }
 
     .section h2 {
@@ -182,7 +183,7 @@
     }
 
     .item {
-      margin-bottom: 11px;
+      margin-bottom: 10px;
     }
 
     .item-title {
@@ -193,7 +194,7 @@
     .item-sub {
       color: #666;
       font-size: 11px;
-      margin-top: 3px;
+      margin-top: 2px;
       font-style: italic;
     }
 
@@ -206,7 +207,7 @@
     }
 
     .item-date {
-      font-size: 10px;
+      font-size: 11px;
       color: #aaa;
       white-space: nowrap;
       margin-top: 2px;
@@ -252,9 +253,10 @@
       gap: 20px;
       border: 1px solid #ccc;
       padding: 12px 16px;
-      margin-bottom: 15px;
+      margin-bottom: 12px;
       font-size: 11px;
-      line-height: 1.4;
+      line-height: 2.0;
+      align-items: center;
     }
 
     .intro-contact {
@@ -267,6 +269,12 @@
       color: #444;
       line-height: 1.4;
       font-size: 10px;
+    }
+
+    @media print {
+      @page { size: A4; margin: 10mm; }
+      body { padding: 0; background: white !important; }
+      .cv { box-shadow: none; max-width: 100%; max-height: none; padding: 20px 30px; }
     }
   </style>
 </head>
@@ -299,7 +307,7 @@
         </div>
         <div class="item-sub">Biborg · Lyon, France</div>
         <ul class="item-desc">
-          <li>Pilotage de campagnes média digitales du brief au post-mortem de campagne.</li>
+          <li>Pilotage de 15 campagnes média (30k à 150k de budget), du brief au post-mortem, pour des clients comme Capcom et Bandai Namco.</li>
           <li>Construction de recommandations et de plans média alignés avec les objectifs business des clients.</li>
           <li>Analyse des performances, optimisation en continu et reporting de campagne avec recommandations.</li>
           <li>Gestion, consolidation et coordination des partenaires média afin de proposer aux clients des activations 360°.</li>
@@ -314,8 +322,8 @@
         </div>
         <div class="item-sub">Ad4screen · Paris, France</div>
         <ul class="item-desc">
-          <li>Cadrage des besoins clients en amont des campagnes : planning, assets créatifs, dispositifs média et suivi de la data.</li>
-          <li>Pilotage des campagnes marketing digitales multicanales, en coordination avec les équipes internes.</li>
+          <li>Cadrage des besoins clients pour des comptes clés (Carrefour, Toosla) : planning, assets créatifs, dispositifs média et suivi de la data.</li>
+          <li>Pilotage des campagnes média multicanales de clients mid-market jusqu'à 8000€ par mois, en coordination avec les équipes internes.</li>
           <li>Analyse des performances et ajustements stratégiques en vue d'optimiser les résultats selon une logique ROIste.</li>
           <li>Gestion de la relation client : reporting hebdomadaire et accompagnement stratégique.</li>
           <li>Gestion d'influence : coordination des campagnes et création de contenu UGC.</li>
@@ -359,7 +367,7 @@
         <div class="item-sub">PayPlug – Natixis Payment – BPCE group · Paris, France</div>
         <ul class="item-desc">
           <li>Qualification des leads entrants pour optimiser le tunnel de conversion.</li>
-          <li>Accompagnement client via des recommandations personnalisées et mise en place de processus de vente end-to-end.</li>
+          <li>Accompagnement de TPE/PME 30K à 100K€ de CA annuel via des recommandations personnalisées et mise en place de processus de vente.</li>
           <li>Structuration des tableaux de suivi via le CRM et le Data Warehouse.</li>
         </ul>
       </div>
@@ -418,14 +426,14 @@
       <h2>Intérêts</h2>
       <div class="two-col">
         <div>
-          <div class="item-line"><strong>Sport :</strong> Running, Musculation</div>
+          <div class="item-line"><strong>Sport :</strong> Running (marathon 2024 & 2026 et Saintélyon 2023), Musculation</div>
           <div class="item-line"><strong>Lecture :</strong> Développement personnel</div>
           <div class="item-line"><strong>Voyages :</strong> Plus de 15 pays visités</div>
         </div>
         <div>
           <div class="item-line"><strong>Jeux vidéo :</strong> Jeux compétitifs</div>
-          <div class="item-line"><strong>Animation japonaise et dessin</strong></div>
           <div class="item-line"><strong>Vibe coding :</strong> Claude Code</div>
+          <div class="item-line"><strong>Animation japonaise et dessin</strong></div>
         </div>
       </div>
     </div>
