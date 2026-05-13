@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CV Editor — EN</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #1e1e2e;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      background: #13131f;
+      color: #cdd6f4;
+      border-bottom: 1px solid #313244;
+      flex-shrink: 0;
+    }
+
+    header h1 { font-size: 14px; font-weight: 600; letter-spacing: 0.05em; }
+
+    button {
+      padding: 6px 16px;
+      background: #89b4fa;
+      color: #1e1e2e;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    button:hover { background: #74c7ec; }
+
+    .workspace {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .pane {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .editor-pane { width: 50%; border-right: 1px solid #313244; }
+    .preview-pane { flex: 1; }
+
+    .pane-label {
+      padding: 5px 12px;
+      background: #181825;
+      color: #585b70;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      border-bottom: 1px solid #313244;
+      flex-shrink: 0;
+    }
+
+    .cm-wrapper {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .CodeMirror {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      height: 100%;
+      font-size: 13px;
+      font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      line-height: 1.6;
+    }
+
+    iframe {
+      flex: 1;
+      border: none;
+      background: white;
+    }
+
+    .resizer {
+      width: 5px;
+      background: #313244;
+      cursor: col-resize;
+      flex-shrink: 0;
+      transition: background 0.15s;
+      position: relative;
+      z-index: 10;
+    }
+    .resizer:hover, .resizer.dragging { background: #89b4fa; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>CV Editor — EN</h1>
+    <button onclick="exportCV()">⬇ Export CV</button>
+  </header>
+
+  <div class="workspace">
+    <div class="pane editor-pane" id="editorPane">
+      <div class="pane-label">HTML Code</div>
+      <div class="cm-wrapper">
+        <textarea id="editor"></textarea>
+      </div>
+    </div>
+    <div class="resizer" id="resizer"></div>
+    <div class="pane preview-pane">
+      <div class="pane-label">Live Preview</div>
+      <iframe id="preview"></iframe>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closetag.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+
+  <script>
+    const initialCV = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My CV</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Georgia', serif;
+      background: #f5f5f0;
+      color: #2c2c2c;
+      padding: 40px 20px;
+    }
+
+    .cv {
+      margin: 0 auto;
+      background: white;
+      padding: 20px 30px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      max-width: 794px;
+      min-height: 1123px;
+      max-height: 1123px;
+    }
+
+    .header {
+      padding-bottom: 5px;
+      margin-bottom: 2px;
+    }
+
+    .header h1 {
+      font-size: 13px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .section {
+      margin-bottom: 12px;
+    }
+
+    .section h2 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: #999;
+      border-bottom: 1px solid #e5e5e5;
+      padding-bottom: 3px;
+      margin-bottom: 7px;
+    }
+
+    .item {
+      margin-bottom: 10px;
+    }
+
+    .item-title {
+      font-weight: bold;
+      font-size: 12px;
+    }
+
+    .item-sub {
+      color: #666;
+      font-size: 11px;
+      margin-top: 2px;
+      font-style: italic;
+    }
+
+    .item-desc {
+      color: #444;
+      font-size: 11px;
+      margin-top: 3px;
+      margin-left: 25px;
+      line-height: 1.4;
+    }
+
+    .item-date {
+      font-size: 11px;
+      color: #aaa;
+      white-space: nowrap;
+      margin-top: 2px;
+      text-align: right;
+    }
+
+    .item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .item-line {
+      font-size: 11px;
+      color: #444;
+      margin-bottom: 6px;
+      line-height: 1.2;
+    }
+
+    .skills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .skill {
+      background: #f0f0ec;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      color: #333;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .intro-section {
+      display: grid;
+      grid-template-columns: 1fr 3fr;
+      gap: 20px;
+      border: 1px solid #ccc;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+      font-size: 11px;
+      line-height: 2.0;
+      align-items: center;
+    }
+
+    .intro-contact {
+      border-right: 1px solid #ccc;
+      padding-right: 11px;
+      color: #333;
+    }
+
+    .intro-text {
+      color: #444;
+      line-height: 1.4;
+      font-size: 10px;
+    }
+
+    @media print {
+      @page { size: A4; margin: 10mm; }
+      body { padding: 0; background: white !important; }
+      .cv { box-shadow: none; max-width: 100%; max-height: none; padding: 20px 30px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="cv">
+
+    <div class="header">
+      <h1>Eloi Perrin</h1>
+    </div>
+
+    <div class="intro-section">
+      <div class="intro-contact">
+        <div>Phone: +33 6 40 67 31 96</div>
+        <div>Email: eloi.perrin@dauphine.eu</div>
+        <div>Paris, France</div>
+      </div>
+      <div class="intro-text">
+        With a background spanning digital marketing, project management and Brand Management, I have developed a strategic, operational and performance-driven approach. My career path — from media agencies and gaming to fintech and consumer electronics — has allowed me to thrive in diverse and demanding environments, with a strong ability to adapt. After several agency-side experiences, I am now looking to join a product-focused environment, particularly in tech, where I can apply my skills toward a long-term vision. Curious, adaptable and quickly autonomous, I am available from June - July 2026.
+      </div>
+    </div>
+
+    <!-- EXPERIENCE -->
+    <div class="section">
+      <h2>Experience</h2>
+
+      <div class="item">
+        <div class="item-row">
+          <div class="item-title">Junior Media Manager</div>
+          <div class="item-date">July 2025 – June 2026</div>
+        </div>
+        <div class="item-sub">Biborg · Lyon, France</div>
+        <ul class="item-desc">
+          <li>Managed 15 media campaigns (budgets from €30K to €150K), from briefing to post-mortem, for clients such as Capcom and Bandai Namco.</li>
+          <li>Built media recommendations and plans aligned with clients' business objectives.</li>
+          <li>Performance analysis, continuous optimization and campaign reporting with strategic recommendations.</li>
+          <li>Management, consolidation and coordination of media partners to deliver 360° activations to clients.</li>
+          <li>Supported the Media Associate Director with project coordination and client relationship management.</li>
+        </ul>
+      </div>
+
+      <div class="item">
+        <div class="item-row">
+          <div class="item-title">Project Manager & Social Ads Manager</div>
+          <div class="item-date">October 2024 – April 2025</div>
+        </div>
+        <div class="item-sub">Ad4screen · Paris, France</div>
+        <ul class="item-desc">
+          <li>Scoped client needs for key accounts (Carrefour, Toosla): planning, creative assets, media strategy and data tracking.</li>
+          <li>Managed multichannel media campaigns for mid-market clients with budgets up to €8,000/month, in coordination with internal teams.</li>
+          <li>Performance analysis and strategic adjustments to optimize ROI-driven results.</li>
+          <li>Client relationship management: weekly reporting and strategic advisory.</li>
+          <li>Influencer management: campaign coordination and UGC content creation.</li>
+        </ul>
+      </div>
+
+      <div class="item">
+        <div class="item-row">
+          <div class="item-title">Brand Manager Assistant – Assassin's Creed</div>
+          <div class="item-date">July 2023 – December 2023</div>
+        </div>
+        <div class="item-sub">Ubisoft EMEA · Saint-Mandé, France</div>
+        <ul class="item-desc">
+          <li>Led marketing asset production with media and creative teams for multichannel distribution.</li>
+          <li>Project management across deliverables: internal/external briefs, production tracking and content validation.</li>
+          <li>Structured consolidation and transmission of feedback to creative teams and partner agencies.</li>
+          <li>Active contribution to Assassin's Creed Mirage CRM campaigns, from strategy to execution.</li>
+          <li>Operational support to project, marketing and local teams across the Assassin's Creed franchise.</li>
+          <li>Managed and organized local events to support the launch of Assassin's Creed Mirage – Paris Games Week.</li>
+        </ul>
+      </div>
+
+      <div class="item">
+        <div class="item-row">
+          <div class="item-title">Assistant Product Manager – Lumix</div>
+          <div class="item-date">January 2022 – July 2022</div>
+        </div>
+        <div class="item-sub">Panasonic France · Gennevilliers, France</div>
+        <ul class="item-desc">
+          <li>Market analysis (GFK panels, benchmarking) to inform strategic and commercial decision-making.</li>
+          <li>New product launches and creation of sales support materials.</li>
+          <li>Social media management and contribution to marketing action plans.</li>
+        </ul>
+      </div>
+
+      <div class="item">
+        <div class="item-row">
+          <div class="item-title">Business Developer: Inside Sales (74 deals signed)</div>
+          <div class="item-date">July 2021 – December 2021</div>
+        </div>
+        <div class="item-sub">PayPlug – Natixis Payment – BPCE group · Paris, France</div>
+        <ul class="item-desc">
+          <li>Qualified inbound leads to optimize the conversion funnel.</li>
+          <li>Supported SMEs generating €30K to €100K in annual revenue through personalized recommendations and end-to-end sales process implementation.</li>
+          <li>Structured tracking dashboards using CRM and Data Warehouse tools.</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- EDUCATION -->
+    <div class="section">
+      <h2>Education</h2>
+
+      <div class="item">
+        <div class="item-title">Paris Dauphine University · London, United Kingdom & Paris, France</div>
+
+        <div class="item-row">
+          <div class="item-sub">Master's Degree (Grande École) in Marketing & Strategy, specializing in Product Management & Marketing Research</div>
+          <div class="item-date">2020 - 2023</div>
+        </div>
+        <ul class="item-desc">
+          <li>Academic consulting projects for companies: Nudge Challenge 2020, Auchan, Rowenta, Kleber, Danette, French Army.</li>
+          <li>Research dissertation: 'From Video Games to Virtual Reality' — psychological effects and behavioral studies.</li>
+        </ul>
+
+        <div class="item-row">
+          <div class="item-sub">Bachelor's Degree in Management</div>
+          <div class="item-date">2017 - 2020</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SKILLS -->
+    <div class="section">
+      <h2>Skills</h2>
+      <div class="two-col">
+        <div>
+          <div class="item-line"><strong>Data:</strong> Google Ads, Meta Business, Snapchat Ads, TikTok Ads, LinkedIn Ads, Reddit Ads, Google Data Studio, Funnel.io certifications</div>
+          <div class="item-line"><strong>Tools:</strong> Claude Code, Jira, Hubspot, Zendesk, RStudio, Notion, G Suite & Microsoft suite</div>
+        </div>
+        <div>
+          <div class="item-line"><strong>Methodology:</strong> Agile methodology, Project management, Process optimization</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LANGUAGES -->
+    <div class="section">
+      <h2>Languages</h2>
+      <div class="two-col">
+        <div class="item-line"><strong>French</strong>: Native</div>
+        <div class="item-line"><strong>English</strong>: Bilingual (C1)</div>
+      </div>
+    </div>
+
+    <!-- INTERESTS -->
+    <div class="section">
+      <h2>Interests</h2>
+      <div class="two-col">
+        <div>
+          <div class="item-line"><strong>Sports:</strong> Running (2024 & 2026 marathons and Saintélyon 2023), Weightlifting</div>
+          <div class="item-line"><strong>Reading:</strong> Personal development</div>
+          <div class="item-line"><strong>Travel:</strong> 15+ countries visited</div>
+        </div>
+        <div>
+          <div class="item-line"><strong>Video games:</strong> Competitive gaming</div>
+          <div class="item-line"><strong>Vibe coding:</strong> Claude Code</div>
+          <div class="item-line"><strong>Japanese animation and drawing</strong></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>`;
+
+    // ── Init CodeMirror ──
+    const cm = CodeMirror.fromTextArea(document.getElementById('editor'), {
+      mode: 'htmlmixed',
+      theme: 'dracula',
+      lineNumbers: true,
+      autoCloseTags: true,
+      autoCloseBrackets: true,
+      lineWrapping: true,
+      tabSize: 2,
+      indentWithTabs: false,
+    });
+
+    cm.setValue(initialCV);
+    cm.setSize('100%', '100%');
+
+    // ── Live preview ──
+    function updatePreview() {
+      const iframe = document.getElementById('preview');
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open();
+      doc.write(cm.getValue());
+      doc.close();
+    }
+
+    cm.on('change', updatePreview);
+    updatePreview();
+
+    // ── Resizer ──
+    const resizer = document.getElementById('resizer');
+    const editorPane = document.getElementById('editorPane');
+    const workspace = document.querySelector('.workspace');
+    let isResizing = false;
+
+    resizer.addEventListener('mousedown', () => {
+      isResizing = true;
+      resizer.classList.add('dragging');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      const rect = workspace.getBoundingClientRect();
+      const pct = Math.min(Math.max((e.clientX - rect.left) / rect.width * 100, 20), 80);
+      editorPane.style.width = pct + '%';
+    });
+
+    document.addEventListener('mouseup', () => {
+      isResizing = false;
+      resizer.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    });
+
+    // ── Export ──
+    function exportCV() {
+      const blob = new Blob([cm.getValue()], { type: 'text/html' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'cv-en.html';
+      a.click();
+    }
+  </script>
+
+</body>
+</html>
