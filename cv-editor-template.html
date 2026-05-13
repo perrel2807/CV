@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>CV Editor</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #1e1e2e;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      background: #13131f;
+      color: #cdd6f4;
+      border-bottom: 1px solid #313244;
+      flex-shrink: 0;
+    }
+
+    header h1 { font-size: 14px; font-weight: 600; letter-spacing: 0.05em; }
+
+    button {
+      padding: 6px 16px;
+      background: #89b4fa;
+      color: #1e1e2e;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    button:hover { background: #74c7ec; }
+
+    .workspace {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .pane {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .editor-pane { width: 50%; border-right: 1px solid #313244; }
+    .preview-pane { flex: 1; }
+
+    .pane-label {
+      padding: 5px 12px;
+      background: #181825;
+      color: #585b70;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      border-bottom: 1px solid #313244;
+      flex-shrink: 0;
+    }
+
+    .cm-wrapper {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .CodeMirror {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      height: 100%;
+      font-size: 13px;
+      font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      line-height: 1.6;
+    }
+
+    iframe {
+      flex: 1;
+      border: none;
+      background: white;
+    }
+
+    .resizer {
+      width: 5px;
+      background: #313244;
+      cursor: col-resize;
+      flex-shrink: 0;
+      transition: background 0.15s;
+      position: relative;
+      z-index: 10;
+    }
+    .resizer:hover, .resizer.dragging { background: #89b4fa; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>CV Editor</h1>
+    <button onclick="exportCV()">⬇ Exporter le CV</button>
+  </header>
+
+  <div class="workspace">
+    <div class="pane editor-pane" id="editorPane">
+      <div class="pane-label">Code HTML</div>
+      <div class="cm-wrapper">
+        <textarea id="editor"></textarea>
+      </div>
+    </div>
+    <div class="resizer" id="resizer"></div>
+    <div class="pane preview-pane">
+      <div class="pane-label">Aperçu en temps réel</div>
+      <iframe id="preview"></iframe>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closetag.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+
+  <script>
+    const initialCV = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mon CV</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Georgia', serif;
+      background: #f5f5f0;
+      color: #2c2c2c;
+      padding: 40px 20px;
+    }
+
+    .cv {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px 30px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+
+    .header {
+      border-bottom: 2px solid #2c2c2c;
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+    }
+
+    .header h1 {
+      font-size: 13px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .section {
+      margin-bottom: 16px;
+    }
+
+    .section h2 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: #999;
+      border-bottom: 1px solid #e5e5e5;
+      padding-bottom: 3px;
+      margin-bottom: 7px;
+    }
+
+    .item {
+      margin-bottom: 11px;
+    }
+
+    .item-title {
+      font-weight: bold;
+      font-size: 12px;
+    }
+
+    .item-sub {
+      color: #666;
+      font-size: 11px;
+      margin-top: 3px;
+      font-style: italic;
+    }
+
+    .item-desc {
+      color: #444;
+      font-size: 11px;
+      margin-top: 3px;
+      margin-left: 25px;
+      line-height: 1.4;
+    }
+
+    .item-date {
+      font-size: 10px;
+      color: #aaa;
+      white-space: nowrap;
+      margin-top: 2px;
+      text-align: right;
+    }
+
+    .item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .item-line {
+      font-size: 11px;
+      color: #444;
+      margin-bottom: 6px;
+      line-height: 1.2;
+    }
+
+    .skills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .skill {
+      background: #f0f0ec;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      color: #333;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .intro-section {
+      display: grid;
+      grid-template-columns: 1fr 3fr;
+      gap: 20px;
+      border: 1px solid #ccc;
+      padding: 12px 16px;
+      margin-bottom: 15px;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .intro-contact {
+      border-right: 1px solid #ccc;
+      padding-right: 11px;
+      color: #333;
+    }
+
+    .intro-text {
+      color: #444;
+      line-height: 1.4;
+      font-size: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="cv">
+
+    <div class="header">
+      <h1>Eloi Perrin</h1>
+    </div>
+
+    <div class="intro-section">
+      <div class="intro-contact">
+        <div>Téléphone : +33 6 40 67 31 96</div>
+        <div>Mail : eloi.perrin@dauphine.eu</div>
+        <div>Paris, France</div>
+      </div>
+      <div class="intro-text">
+        Fort d'expériences en marketing digital, gestion de projet et Brand Management, j'ai développé une approche à la fois stratégique, opérationnelle et orientée performance. Mon parcours — des agences média au gaming en passant par la fintech et l'électronique grand public — m'a permis d'évoluer dans des environnements variés et exigeants, avec une forte capacité d'adaptation. Après plusieurs expériences en agence, je souhaite aujourd'hui rejoindre un environnement produit, en particulier dans la tech, où je pourrai mettre mes compétences au service d'une vision long terme. Curieux, adaptable et rapidement autonome, je suis disponible à partir de juin - juillet 2026.
+      </div>
+    </div>
+
+    <!-- EXPÉRIENCE -->
+    <div class="section">
+      <h2>Expérience</h2>
+
+      <div class="item">
+        <div class="item-row">
+          <div class="item-title">Junior Media Manager</div>
+          <div class="item-date">Juillet 2025 – Juin 2026</div>
+        </div>
+        <div class="item-sub">Biborg · Lyon, France</div>
+        <ul class="item-desc">
+          <li>Pilotage de campagnes média digitales du brief au post-mortem de campagne.</li>
+          <li>Construction de recommandations et de plans média alignés avec les objectifs business des clients.</li>
+          <li>Analyse des performances, optimisation en continu et reporting de campagne avec recommandations.</li>
+          <li>Gestion, consolidation et coordination des partenaires média afin de proposer aux clients des activations 360°.</li>
+          <li>Accompagnement du Media Associate Director sur la coordination des projets et le suivi de la relation client.</li>
+        </ul>
+      </div>
+
+      <div class="item">
+        <div class="item-row">
+          <div class="item-title">Chef de projet & Social Ads Manager</div>
+          <div class="item-date">Octobre 2024 – Avril 2025</div>
+        </div>
+        <div class="item-sub">Ad4screen · Paris, France</div>
+        <ul class="item-desc">
+          <li>Cadrage des besoins clients en amont des campagnes : planning, assets créatifs, dispositifs média et suivi de la data.</li>
+          <li>Pilotage des campagnes marketing digitales multicanales, en coordination avec les équipes internes.</li>
+          <li>Analyse des performances et ajustements stratégiques en vue d'optimiser les résultats selon une logique ROIste.</li>
+          <li>Gestion de la relation client : reporting hebdomadaire et accompagnement stratégique.</li>
+          <li>Gestion d'influence : coordination des campagnes et création de contenu UGC.</li>
+        </ul>
+      </div>
+
+      <div class="item">
+        <div class="item-row">
+          <div class="item-title">Brand Manager assistant – Assassin's Creed</div>
+          <div class="item-date">Juillet 2023 – Décembre 2023</div>
+        </div>
+        <div class="item-sub">Ubisoft EMEA · Saint-Mandé, France</div>
+        <ul class="item-desc">
+          <li>Pilotage de la production d'assets marketing avec les équipes média et créatives pour une diffusion multicanale.</li>
+          <li>Gestion de projets sur les livrables : briefs internes/externes, suivi de production et validations des contenus.</li>
+          <li>Consolidation et transmission structurée des retours aux équipes créatives et agences partenaires.</li>
+          <li>Contribution active aux campagnes CRM d'Assassin's Creed Mirage, stratégie et exécution.</li>
+          <li>Support opérationnel aux équipes projet, marketing et locales de la franchise Assassin's Creed.</li>
+          <li>Gestion et organisation d'événements locaux pour soutenir le lancement d'Assassin's Creed Mirage – Paris Games Week.</li>
+        </ul>
+      </div>
+
+      <div class="item">
+        <div class="item-row">
+          <div class="item-title">Assistant Chef de produit – Lumix</div>
+          <div class="item-date">Janvier 2022 – Juillet 2022</div>
+        </div>
+        <div class="item-sub">Panasonic France · Gennevilliers, France</div>
+        <ul class="item-desc">
+          <li>Analyse de marché (panels GFK, benchmark) afin d'orienter les décisions stratégiques et commerciales.</li>
+          <li>Lancement de nouveaux produits et création d'outils d'aide à la vente.</li>
+          <li>Gestion des réseaux sociaux et participation à l'élaboration de plans d'action marketing.</li>
+        </ul>
+      </div>
+
+      <div class="item">
+        <div class="item-row">
+          <div class="item-title">Business developer : Inside sales (74 deals signés)</div>
+          <div class="item-date">Juillet 2021 – Décembre 2021</div>
+        </div>
+        <div class="item-sub">PayPlug – Natixis Payment – BPCE group · Paris, France</div>
+        <ul class="item-desc">
+          <li>Qualification des leads entrants pour optimiser le tunnel de conversion.</li>
+          <li>Accompagnement client via des recommandations personnalisées et mise en place de processus de vente end-to-end.</li>
+          <li>Structuration des tableaux de suivi via le CRM et le Data Warehouse.</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- FORMATION -->
+    <div class="section">
+      <h2>Formation</h2>
+
+      <div class="item">
+        <div class="item-title">Université Paris Dauphine · Londres, Royaume-Uni & Paris, France</div>
+
+        <div class="item-row">
+          <div class="item-sub">Master 2 « Diplôme Grande École » Marketing & Stratégie spécialisé en chef de produit & études marketing</div>
+          <div class="item-date">2020 - 2023</div>
+        </div>
+        <ul class="item-desc">
+          <li>Missions académiques pour des entreprises : Nudge Challenge 2020, Auchan, Rowenta, Kleber, Danette, Armée de terre.</li>
+          <li>Mémoire de recherche : « Du jeu vidéo à la réalité virtuelle » — effets psychologiques et études comportementales.</li>
+        </ul>
+
+        <div class="item-row">
+          <div class="item-sub">Licence de Gestion</div>
+          <div class="item-date">2017 - 2020</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- COMPÉTENCES -->
+    <div class="section">
+      <h2>Compétences</h2>
+      <div class="two-col">
+        <div>
+          <div class="item-line"><strong>Data :</strong> Certifications Google Ads, Meta Business, Snapchat Ads, TikTok Ads, LinkedIn Ads, Reddit Ads, Google Data Studio, Funnel.io</div>
+          <div class="item-line"><strong>Logiciels :</strong> Claude Code, Jira, Hubspot, Zendesk, RStudio, Notion, Gsuite & Microsoft suite</div>
+        </div>
+        <div>
+          <div class="item-line"><strong>Méthodologie :</strong> Méthode Agile, Gestion de projet, Optimisation de process</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LANGUES -->
+    <div class="section">
+      <h2>Langues</h2>
+      <div class="two-col">
+        <div class="item-line"><strong>Français</strong> : Natif</div>
+        <div class="item-line"><strong>Anglais</strong> : Bilingue (C1)</div>
+      </div>
+    </div>
+
+    <!-- INTÉRÊTS -->
+    <div class="section">
+      <h2>Intérêts</h2>
+      <div class="two-col">
+        <div>
+          <div class="item-line"><strong>Sport :</strong> Running, Musculation</div>
+          <div class="item-line"><strong>Lecture :</strong> Développement personnel</div>
+          <div class="item-line"><strong>Voyages :</strong> Plus de 15 pays visités</div>
+        </div>
+        <div>
+          <div class="item-line"><strong>Jeux vidéo :</strong> Jeux compétitifs</div>
+          <div class="item-line"><strong>Animation japonaise et dessin</strong></div>
+          <div class="item-line"><strong>Vibe coding :</strong> Claude Code</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>`;
+
+    // ── Init CodeMirror ──
+    const cm = CodeMirror.fromTextArea(document.getElementById('editor'), {
+      mode: 'htmlmixed',
+      theme: 'dracula',
+      lineNumbers: true,
+      autoCloseTags: true,
+      autoCloseBrackets: true,
+      lineWrapping: true,
+      tabSize: 2,
+      indentWithTabs: false,
+    });
+
+    cm.setValue(initialCV);
+    cm.setSize('100%', '100%');
+
+    // ── Live preview ──
+    function updatePreview() {
+      const iframe = document.getElementById('preview');
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open();
+      doc.write(cm.getValue());
+      doc.close();
+    }
+
+    cm.on('change', updatePreview);
+    updatePreview();
+
+    // ── Resizer ──
+    const resizer = document.getElementById('resizer');
+    const editorPane = document.getElementById('editorPane');
+    const workspace = document.querySelector('.workspace');
+    let isResizing = false;
+
+    resizer.addEventListener('mousedown', () => {
+      isResizing = true;
+      resizer.classList.add('dragging');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      const rect = workspace.getBoundingClientRect();
+      const pct = Math.min(Math.max((e.clientX - rect.left) / rect.width * 100, 20), 80);
+      editorPane.style.width = pct + '%';
+    });
+
+    document.addEventListener('mouseup', () => {
+      isResizing = false;
+      resizer.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    });
+
+    // ── Export ──
+    function exportCV() {
+      const blob = new Blob([cm.getValue()], { type: 'text/html' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'cv.html';
+      a.click();
+    }
+  </script>
+
+</body>
+</html>
